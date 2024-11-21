@@ -1,41 +1,35 @@
+# PKA.py
 import socket
 import json
 
-public_keys = {}
+keys = {}
 
-def handle_client(connection):
-    global public_keys
-    data = connection.recv(1024).decode()
-    request = json.loads(data)
+def handle_client(client_socket):
+    request = client_socket.recv(1024).decode()
+    request_data = json.loads(request)
 
-    if request['action'] == 'register':
-        client_id = request['client_id']
-        public_key = request['public_key']
-        public_keys[client_id] = public_key
-        response = {"status": "success", "message": "Public key registered"}
-    elif request['action'] == 'get_key':
-        client_id = request['client_id']
-        if client_id in public_keys:
-            response = {"status": "success", "public_key": public_keys[client_id]}
+    if request_data["action"] == "register":
+        keys[request_data["name"]] = request_data["public_key"]
+        response = {"status": "registered"}
+    elif request_data["action"] == "get_key":
+        requested_name = request_data["name"]
+        if requested_name in keys:
+            response = {"public_key": keys[requested_name]}
         else:
-            response = {"status": "error", "message": "Client not found"}
-    else:
-        response = {"status": "error", "message": "Invalid action"}
+            response = {"error": "Public key not found"}
 
-    connection.send(json.dumps(response).encode())
-    connection.close()
+    client_socket.send(json.dumps(response).encode())
+    client_socket.close()
 
 def start_pka():
-    server_address = 'localhost'
-    server_port = 4000
-    socket_server = socket.socket()
-    socket_server.bind((server_address, server_port))
-    socket_server.listen(5)
+    server_socket = socket.socket()
+    server_socket.bind(("localhost", 4000))
+    server_socket.listen(5)
+    print("PKA is running on port 4000.")
 
-    print(f"Public Key Authority is running on {server_address}:{server_port}")
     while True:
-        connection, _ = socket_server.accept()
-        handle_client(connection)
+        client_socket, _ = server_socket.accept()
+        handle_client(client_socket)
 
 if __name__ == '__main__':
     start_pka()
